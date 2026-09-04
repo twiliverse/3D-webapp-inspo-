@@ -156,4 +156,622 @@
         </div>
 
         <div class="favorites-badge" id="favBadge">
-            <div class="favorites-title">Twisha's Favorites Inside:
+            <div class="favorites-title">Twisha's Favorites Inside:</div>
+            <ul class="favorites-list">
+                <li>🧋 Brown Sugar Boba Tea & Strawberry Milk</li>
+                <li>🍓 Fresh Strawberries, Berries & Bananas</li>
+                <li>🧁 Pastel Parisian Macarons & Cupcakes</li>
+                <li>🥑 Crisp Avocados, Carrots & Greens</li>
+                <li>🍫 Artisan Swiss Chocolates</li>
+            </ul>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn-toggle" id="toggleBtn">✨ Open Doors</button>
+            <div class="hint">Click the fridge doors or button to open • Drag to rotate camera</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- 1. Scene & Camera Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x18161d, 0.035);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 3.8, 8.2);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 + 0.02; // Don't go below ground
+        controls.minDistance = 3.5;
+        controls.maxDistance = 14;
+        controls.target.set(0, 3.2, 0);
+
+        // --- 2. Lighting Setup ---
+        const ambientLight = new THREE.AmbientLight(0xfff6ec, 0.5);
+        scene.add(ambientLight);
+
+        // Key Studio Light
+        const keyLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        keyLight.position.set(5, 8, 6);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 2048;
+        keyLight.shadow.mapSize.height = 2048;
+        keyLight.shadow.bias = -0.0001;
+        scene.add(keyLight);
+
+        // Soft Fill Light
+        const fillLight = new THREE.DirectionalLight(0xb0c5e8, 0.6);
+        fillLight.position.set(-6, 5, -2);
+        scene.add(fillLight);
+
+        // Interior Fridge Warm Glow Light (Activates on open)
+        const interiorLight = new THREE.PointLight(0xfff3db, 0.1, 8);
+        interiorLight.position.set(0, 4.4, 0.4);
+        scene.add(interiorLight);
+
+        const interiorLedStrip = new THREE.PointLight(0xdff0ff, 0.1, 6);
+        interiorLedStrip.position.set(0, 2.5, -0.6);
+        scene.add(interiorLedStrip);
+
+        // --- 3. Studio Pedestal Floor ---
+        const floorGeo = new THREE.CylinderGeometry(8, 8.4, 0.3, 64);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x1d1b22,
+            roughness: 0.45,
+            metalness: 0.2
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.y = -0.15;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Subtle warm accent ring
+        const ringGeo = new THREE.RingGeometry(7.2, 7.35, 64);
+        const ringMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            metalness: 0.8,
+            roughness: 0.3,
+            side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.01;
+        scene.add(ring);
+
+        // --- 4. Designer Materials ---
+        const cashmereColor = 0xf5efe6; // Warm matte luxury cashmere finish
+        const fridgeExtMat = new THREE.MeshStandardMaterial({
+            color: cashmereColor,
+            roughness: 0.25,
+            metalness: 0.12
+        });
+
+        const fridgeIntMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.15,
+            metalness: 0.05
+        });
+
+        const goldMat = new THREE.MeshStandardMaterial({
+            color: 0xe5c158,
+            roughness: 0.22,
+            metalness: 0.9
+        });
+
+        const glassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xe8f5f8,
+            transmission: 0.85,
+            opacity: 1,
+            transparent: true,
+            roughness: 0.1,
+            ior: 1.5,
+            thickness: 0.2
+        });
+
+        // --- 5. "Twisha Family" Custom Plaque Generator ---
+        function createFamilyPlaqueTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 320;
+            const ctx = canvas.getContext('2d');
+
+            // Brushed gold badge background
+            const grad = ctx.createLinearGradient(0, 0, 1024, 320);
+            grad.addColorStop(0, '#eac775');
+            grad.addColorStop(0.5, '#fff1c5');
+            grad.addColorStop(1, '#c59b3f');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1024, 320);
+
+            // Double Luxury Border
+            ctx.strokeStyle = '#6a4e12';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(20, 20, 984, 280);
+            ctx.lineWidth = 3;
+            ctx.strokeRect(36, 36, 952, 248);
+
+            // Family Emblem Accent
+            ctx.fillStyle = '#6a4e12';
+            ctx.font = '28px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('✦   E X C L U S I V E L Y   C U R A T E D   ✦', 512, 85);
+
+            // Name Typography
+            ctx.font = 'bold 82px "Cormorant Garamond", Georgia, serif';
+            ctx.fillText('TWISHA FAMILY', 512, 175);
+
+            // Subtitle
+            ctx.font = '600 24px "Montserrat", sans-serif';
+            ctx.letterSpacing = '6px';
+            ctx.fillText('BESPOKE HOME COUTURE', 512, 235);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // --- 6. Building the Fridge Body ---
+        const fridgeGroup = new THREE.Group();
+        scene.add(fridgeGroup);
+
+        const fridgeW = 3.6;
+        const fridgeH = 6.2;
+        const fridgeD = 2.4;
+
+        // Base Legs (Gold Accents)
+        for (let x of [-1.5, 1.5]) {
+            for (let z of [-0.9, 0.9]) {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.05, 0.25, 16), goldMat);
+                leg.position.set(x, 0.125, z);
+                leg.castShadow = true;
+                fridgeGroup.add(leg);
+            }
+        }
+
+        // Outer Shell Frame
+        const wallThickness = 0.18;
+        function createPanel(w, h, d, x, y, z, mat = fridgeExtMat) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            fridgeGroup.add(mesh);
+            return mesh;
+        }
+
+        // Back, Sides, Top, Bottom of Outer Casing
+        createPanel(fridgeW, fridgeH, wallThickness, 0, fridgeH / 2 + 0.25, -fridgeD / 2 + wallThickness / 2); // Back
+        createPanel(wallThickness, fridgeH, fridgeD, -fridgeW / 2 + wallThickness / 2, fridgeH / 2 + 0.25, 0); // Left
+        createPanel(wallThickness, fridgeH, fridgeD, fridgeW / 2 - wallThickness / 2, fridgeH / 2 + 0.25, 0);  // Right
+        createPanel(fridgeW, wallThickness, fridgeD, 0, fridgeH + 0.25 - wallThickness / 2, 0);                // Top
+        createPanel(fridgeW, 0.35, fridgeD, 0, 0.4, 0);                                                        // Heavy Base
+
+        // Interior Back Accent Panel (Designer Fluted Style)
+        const intBack = new THREE.Mesh(
+            new THREE.BoxGeometry(fridgeW - wallThickness * 2, fridgeH - 0.7, 0.05),
+            fridgeIntMat
+        );
+        intBack.position.set(0, fridgeH / 2 + 0.3, -fridgeD / 2 + wallThickness + 0.05);
+        fridgeGroup.add(intBack);
+
+        // Lower Freezer Exterior Drawer Front
+        const freezerH = 1.6;
+        const freezerFront = new THREE.Mesh(new THREE.BoxGeometry(fridgeW - 0.06, freezerH, 0.15), fridgeExtMat);
+        freezerFront.position.set(0, 1.35, fridgeD / 2 - 0.02);
+        freezerFront.castShadow = true;
+        fridgeGroup.add(freezerFront);
+
+        // Freezer Handle
+        const fHandle = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.08), goldMat);
+        fHandle.position.set(0, 1.9, fridgeD / 2 + 0.08);
+        fHandle.castShadow = true;
+        fridgeGroup.add(fHandle);
+
+        // Middle Divider Shelf (Separates Fresh Food and Freezer)
+        createPanel(fridgeW - 0.3, 0.15, fridgeD - 0.3, 0, 2.2, 0, fridgeIntMat);
+
+        // Glass Shelves inside the Fresh Food compartment
+        const shelfDep = fridgeD - 0.55;
+        const shelfWid = fridgeW - 0.42;
+
+        function addGlassShelf(y) {
+            const shelf = new THREE.Mesh(new THREE.BoxGeometry(shelfWid, 0.06, shelfDep), glassMat);
+            shelf.position.set(0, y, 0.05);
+            shelf.receiveShadow = true;
+            fridgeGroup.add(shelf);
+
+            // Gold support trim
+            const trim = new THREE.Mesh(new THREE.BoxGeometry(shelfWid, 0.065, 0.04), goldMat);
+            trim.position.set(0, y, 0.05 + shelfDep / 2);
+            fridgeGroup.add(trim);
+        }
+
+        addGlassShelf(3.2); // Shelf 1: Veggies & Crisper
+        addGlassShelf(4.2); // Shelf 2: Fresh Fruits Platter
+        addGlassShelf(5.2); // Shelf 3: Sweet Snacks, Drinks & Desserts
+
+        // Dual Crisper Drawers on lower shelf
+        for (let x of [-0.8, 0.8]) {
+            const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, shelfDep), glassMat);
+            drawer.position.set(x, 2.65, 0.05);
+            fridgeGroup.add(drawer);
+
+            const handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), goldMat);
+            handle.position.set(x, 2.85, 0.05 + shelfDep / 2 + 0.02);
+            fridgeGroup.add(handle);
+        }
+
+        // --- 7. French Doors with Custom Twisha Badge ---
+        const doorW = (fridgeW - 0.05) / 2;
+        const doorH = fridgeH - freezerH - 0.55;
+        const doorD = 0.15;
+        const doorPosY = freezerH + 0.7 + doorH / 2;
+
+        // Left Door Group (Rotates at left outer hinge)
+        const leftDoorPivot = new THREE.Group();
+        leftDoorPivot.position.set(-fridgeW / 2 + 0.02, doorPosY, fridgeD / 2 - 0.05);
+        scene.add(leftDoorPivot);
+
+        const leftDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, doorD), fridgeExtMat);
+        leftDoorMesh.position.set(doorW / 2, 0, 0);
+        leftDoorMesh.castShadow = true;
+        leftDoorMesh.receiveShadow = true;
+        leftDoorPivot.add(leftDoorMesh);
+
+        // Left Vertical Gold Handle
+        const lHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.2, 16), goldMat);
+        lHandle.position.set(doorW - 0.12, 0, doorD / 2 + 0.06);
+        lHandle.castShadow = true;
+        leftDoorPivot.add(lHandle);
+
+        // Door In-Shelves (Door bins) Left
+        for (let y of [-0.9, -0.1, 0.7]) {
+            const bin = new THREE.Mesh(new THREE.BoxGeometry(doorW - 0.35, 0.25, 0.25), glassMat);
+            bin.position.set(doorW / 2, y, -doorD / 2 - 0.12);
+            leftDoorPivot.add(bin);
+        }
+
+        // Right Door Group (Rotates at right outer hinge)
+        const rightDoorPivot = new THREE.Group();
+        rightDoorPivot.position.set(fridgeW / 2 - 0.02, doorPosY, fridgeD / 2 - 0.05);
+        scene.add(rightDoorPivot);
+
+        const rightDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, doorD), fridgeExtMat);
+        rightDoorMesh.position.set(-doorW / 2, 0, 0);
+        rightDoorMesh.castShadow = true;
+        rightDoorMesh.receiveShadow = true;
+        rightDoorPivot.add(rightDoorMesh);
+
+        // Right Vertical Gold Handle
+        const rHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.2, 16), goldMat);
+        rHandle.position.set(-doorW + 0.12, 0, doorD / 2 + 0.06);
+        rHandle.castShadow = true;
+        rightDoorPivot.add(rHandle);
+
+        // Door In-Shelves (Door bins) Right
+        for (let y of [-0.9, -0.1, 0.7]) {
+            const bin = new THREE.Mesh(new THREE.BoxGeometry(doorW - 0.35, 0.25, 0.25), glassMat);
+            bin.position.set(-doorW / 2, y, -doorD / 2 - 0.12);
+            rightDoorPivot.add(bin);
+        }
+
+        // --- Custom "Twisha Family" Plaque on the Exterior ---
+        const plaqueMat = new THREE.MeshStandardMaterial({
+            map: createFamilyPlaqueTexture(),
+            metalness: 0.6,
+            roughness: 0.3
+        });
+        const plaqueMesh = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.42, 0.02), plaqueMat);
+        plaqueMesh.position.set(-doorW / 2, 1.15, doorD / 2 + 0.015);
+        rightDoorPivot.add(plaqueMesh);
+
+        // --- 8. Populate Twisha's Favorite Foods ---
+        const foodItems = [];
+
+        // Helper: Sphere food (apples, strawberries, oranges, grapes)
+        function createFruit(color, radius, x, y, z, rough = 0.3) {
+            const geo = new THREE.SphereGeometry(radius, 20, 20);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.05 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y + radius, z);
+            mesh.castShadow = true;
+            fridgeGroup.add(mesh);
+            foodItems.push(mesh);
+            return mesh;
+        }
+
+        // Helper: Drink cup / can (Boba, milk cartons, bottles)
+        function createCylinderItem(color, topR, botR, height, x, y, z, matOpt = {}) {
+            const geo = new THREE.CylinderGeometry(topR, botR, height, 24);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.25, ...matOpt });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y + height / 2, z);
+            mesh.castShadow = true;
+            fridgeGroup.add(mesh);
+            foodItems.push(mesh);
+            return mesh;
+        }
+
+        // == TOP SHELF (y = 5.2): Sweets, Boba & Treats Twisha Loves ==
+        // 1. Boba Tea Cup with Tapioca Pearls & Gold Straw
+        const bobaCup = new THREE.Group();
+        const cupMesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.15, 0.55, 24),
+            new THREE.MeshPhysicalMaterial({ color: 0xffe2c4, transmission: 0.7, transparent: true, roughness: 0.15 })
+        );
+        cupMesh.position.y = 0.28;
+        bobaCup.add(cupMesh);
+        // Straw
+        const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.8, 12), goldMat);
+        straw.position.set(0.04, 0.45, 0.02);
+        straw.rotation.z = -0.2;
+        bobaCup.add(straw);
+        // Pearls at bottom
+        for (let i = 0; i < 9; i++) {
+            const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1f1207 }));
+            pearl.position.set(
+                (Math.random() - 0.5) * 0.22,
+                0.06 + Math.random() * 0.08,
+                (Math.random() - 0.5) * 0.22
+            );
+            bobaCup.add(pearl);
+        }
+        bobaCup.position.set(-1.0, 5.23, 0.15);
+        fridgeGroup.add(bobaCup);
+
+        // 2. Strawberry Milk Carton
+        const milk = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.52, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0xffb5c5, roughness: 0.4 })
+        );
+        milk.position.set(-0.55, 5.23 + 0.26, -0.2);
+        fridgeGroup.add(milk);
+
+        // 3. Parisian Macaron Tower Stand
+        const macaronStand = new THREE.Group();
+        const basePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.35, 0.04, 32), goldMat);
+        basePlate.position.y = 0.02;
+        macaronStand.add(basePlate);
+
+        const macColors = [0xff8da1, 0xbbf2c8, 0xfce38a, 0xcaa6de, 0x85e3ff];
+        macColors.forEach((col, idx) => {
+            const mac = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.07, 16),
+                new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 })
+            );
+            const angle = (idx / 4) * Math.PI * 2;
+            mac.position.set(Math.cos(angle) * 0.22, 0.07, Math.sin(angle) * 0.22);
+            macaronStand.add(mac);
+        });
+        macaronStand.position.set(0.3, 5.23, 0.15);
+        fridgeGroup.add(macaronStand);
+
+        // 4. Artisan Chocolate Box
+        const chocoBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.65, 0.16, 0.45),
+            new THREE.MeshStandardMaterial({ color: 0x3d1e16, roughness: 0.25 })
+        );
+        chocoBox.position.set(1.0, 5.23 + 0.08, -0.15);
+        fridgeGroup.add(chocoBox);
+
+        // Gold Ribbon band
+        const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.17, 0.08), goldMat);
+        ribbon.position.set(1.0, 5.23 + 0.08, -0.15);
+        fridgeGroup.add(ribbon);
+
+        // == MIDDLE SHELF (y = 4.2): Twisha's Fresh Fruit Paradise ==
+        // Ceramic Fruit Platter
+        const platter = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.75, 0.6, 0.07, 32),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 })
+        );
+        platter.position.set(-0.2, 4.23 + 0.035, 0.1);
+        fridgeGroup.add(platter);
+
+        // Fresh Strawberries & Ruby Apples
+        createFruit(0xdd1e2f, 0.16, -0.3, 4.28, 0.05);
+        createFruit(0xe62035, 0.15, -0.05, 4.28, 0.22);
+        createFruit(0xc21828, 0.14, -0.1, 4.28, -0.1);
+        createFruit(0xdc143c, 0.13, -0.4, 4.28, 0.2);
+
+        // Grapes Cluster
+        for (let i = 0; i < 14; i++) {
+            const grape = new THREE.Mesh(
+                new THREE.SphereGeometry(0.055, 12, 12),
+                new THREE.MeshStandardMaterial({ color: 0x5e2b69, roughness: 0.35 })
+            );
+            grape.position.set(
+                0.7 + (Math.random() - 0.5) * 0.3,
+                4.23 + 0.06 + Math.random() * 0.12,
+                0.05 + (Math.random() - 0.5) * 0.3
+            );
+            fridgeGroup.add(grape);
+        }
+
+        // Juicy Oranges
+        createFruit(0xff8c00, 0.18, 0.2, 4.24, -0.2);
+        createFruit(0xffa500, 0.17, -0.8, 4.24, 0.2);
+
+        // Bananas (curved yellow cylinders)
+        for (let i = 0; i < 3; i++) {
+            const banana = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.03, 0.45, 12),
+                new THREE.MeshStandardMaterial({ color: 0xf5d033, roughness: 0.4 })
+            );
+            banana.rotation.z = Math.PI / 3;
+            banana.rotation.y = 0.4 * i;
+            banana.position.set(-1.0, 4.27 + i * 0.04, -0.1 + i * 0.08);
+            fridgeGroup.add(banana);
+        }
+
+        // == LOWER SHELF / CRISPER (y = 3.2): Fresh Veggies & Healthy Eats ==
+        // Ripe Avocados
+        createFruit(0x2d4f1e, 0.17, -0.7, 3.23, 0.2, 0.7);
+        createFruit(0x365e24, 0.16, -0.4, 3.23, 0.1, 0.7);
+
+        // Crisp Carrots with Green Stems
+        for (let i = 0; i < 4; i++) {
+            const carrot = new THREE.Mesh(
+                new THREE.ConeGeometry(0.07, 0.5, 16),
+                new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.45 })
+            );
+            carrot.rotation.x = -Math.PI / 2;
+            carrot.rotation.z = (i - 1.5) * 0.2;
+            carrot.position.set(0.4 + i * 0.14, 3.28, 0.1);
+            fridgeGroup.add(carrot);
+
+            // Leafy top
+            const topLeaf = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02, 0.01, 0.15, 8),
+                new THREE.MeshStandardMaterial({ color: 0x2e7d32 })
+            );
+            topLeaf.position.set(0.4 + i * 0.14, 3.28, -0.18);
+            fridgeGroup.add(topLeaf);
+        }
+
+        // Fresh Broccoli Crown
+        const broccoli = new THREE.Group();
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.22, 12), new THREE.MeshStandardMaterial({ color: 0x7cb342 }));
+        stem.position.y = 0.11;
+        broccoli.add(stem);
+        for (let b = 0; b < 6; b++) {
+            const floret = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 }));
+            floret.position.set(Math.sin(b) * 0.1, 0.24 + Math.cos(b) * 0.05, Math.cos(b * 2) * 0.1);
+            broccoli.add(floret);
+        }
+        broccoli.position.set(1.0, 3.23, -0.1);
+        fridgeGroup.add(broccoli);
+
+        // Door shelf drinks (Inside door bins)
+        createCylinderItem(0xff4d6d, 0.09, 0.09, 0.32, -0.85, 0.75, 0, { metalness: 0.7 }); // Pink Sparkling Soda
+        createCylinderItem(0x48cae4, 0.09, 0.09, 0.32, -0.6, 0.75, 0, { metalness: 0.7 });  // Blueberry Cooler
+
+        // --- 9. Sparkling Fairy Dust Particles (Float inside when open) ---
+        const particleCount = 45;
+        const particleGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            positions[i] = (Math.random() - 0.5) * 2.6;
+            positions[i + 1] = 2.4 + Math.random() * 3.2;
+            positions[i + 2] = (Math.random() - 0.5) * 1.5;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particleMat = new THREE.PointsMaterial({
+            color: 0xffe6aa,
+            size: 0.055,
+            transparent: true,
+            opacity: 0
+        });
+        const sparkles = new THREE.Points(particleGeo, particleMat);
+        scene.add(sparkles);
+
+        // --- 10. Door Animation & State Logic ---
+        let isOpen = false;
+        const maxDoorAngle = Math.PI * 0.68; // ~122 degrees open
+        let targetLeftAngle = 0;
+        let targetRightAngle = 0;
+
+        const toggleBtn = document.getElementById('toggleBtn');
+        const favBadge = document.getElementById('favBadge');
+
+        function toggleDoors() {
+            isOpen = !isOpen;
+            if (isOpen) {
+                targetLeftAngle = -maxDoorAngle;
+                targetRightAngle = maxDoorAngle;
+                toggleBtn.innerHTML = '✨ Close Doors';
+                toggleBtn.style.background = 'linear-gradient(135deg, #a38d5b 0%, #685732 100%)';
+                toggleBtn.style.color = '#fff';
+                favBadge.classList.add('active');
+            } else {
+                targetLeftAngle = 0;
+                targetRightAngle = 0;
+                toggleBtn.innerHTML = '✨ Open Doors';
+                toggleBtn.style.background = 'linear-gradient(135deg, #dfc07b 0%, #b8933b 100%)';
+                toggleBtn.style.color = '#1a1712';
+                favBadge.classList.remove('active');
+            }
+        }
+
+        toggleBtn.addEventListener('click', toggleDoors);
+
+        // Raycasting: Click anywhere on the fridge to toggle
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#ui-container button') || e.target.closest('#favBadge')) return;
+
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // Intersect with fridge elements
+            const intersects = raycaster.intersectObjects([
+                leftDoorMesh, rightDoorMesh, plaqueMesh, freezerFront, fHandle, lHandle, rHandle
+            ], true);
+
+            if (intersects.length > 0) {
+                toggleDoors();
+            }
+        });
+
+        // Responsive Resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 11. Render Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            const delta = clock.getDelta();
+            const elapsed = clock.getElapsedTime();
+
+            // Smooth Door Swing
+            leftDoorPivot.rotation.y = THREE.MathUtils.lerp(leftDoorPivot.rotation.y, targetLeftAngle, 0.08);
+            rightDoorPivot.rotation.y = THREE.MathUtils.lerp(rightDoorPivot.rotation.y, targetRightAngle, 0.08);
+
+            // Dynamic LED Lighting and Glow when opened
+            const openness = Math.abs(rightDoorPivot.rotation.y) / maxDoorAngle;
+            interiorLight.intensity = THREE.MathUtils.lerp(interiorLight.intensity, isOpen ? 1.8 : 0.05, 0.08);
+            interiorLedStrip.intensity = THREE.MathUtils.lerp(interiorLedStrip.intensity, isOpen ? 1.2 : 0.05, 0.08);
+            particleMat.opacity = THREE.MathUtils.lerp(particleMat.opacity, isOpen ? 0.75 : 0.0, 0.06);
+
+            // Sparkle Particle subtle floating drift
+            const pos = particleGeo.attributes.position.array;
+            for (let i = 1; i < particleCount * 3; i += 3) {
+                pos[i] += Math.sin(elapsed * 2 + i) * 0.002;
+            }
+            particleGeo.attributes.position.needsUpdate = true;
+
+            // Very subtle idle floating breathe for the fridge
+            fridgeGroup.position.y = Math.sin(elapsed * 1.2) * 0.02;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
