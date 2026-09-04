@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twisha Family Fridge</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            perspective: 1200px;
+        }
+
+        .scene {
+            width: 300px;
+            height: 500px;
+            position: relative;
+            transform-style: preserve-3d;
+            /* Tilted slightly to show the 3D depth */
+            transform: rotateX(-5deg) rotateY(-20deg);
+            transition: transform 0.5s ease;
+        }
+
+        .scene:hover {
+            transform: rotateX(-5deg) rotateY(-15deg);
+        }
+
+        /* Fridge Body construction */
+        .fridge-box {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+        }
+
+        .face {
+            position: absolute;
+            background: #e0e0e0;
+            border: 2px solid #bdbdbd;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.1);
+        }
+
+        /* Fridge dimensions: W: 300, H: 500, D: 200 */
+        .back   { width: 300px; height: 500px; transform: translateZ(-200px); background: #eee; }
+        .left   { width: 200px; height: 500px; transform: rotateY(-90deg) translateZ(100px) translateX(-100px); background: #d6d6d6; }
+        .right  { width: 200px; height: 500px; transform: rotateY(90deg) translateZ(200px) translateX(100px); background: #cfcfcf; }
+        .top    { width: 300px; height: 200px; transform: rotateX(90deg) translateZ(100px) translateY(-100px); background: #e0e0e0; }
+        .bottom { width: 300px; height: 200px; transform: rotateX(-90deg) translateZ(400px) translateY(100px); background: #999; }
+
+        /* The Door */
+        .door {
+            width: 300px;
+            height: 500px;
+            position: absolute;
+            transform-origin: left;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0);
+            cursor: pointer;
+        }
+
+        .door-front {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: linear-gradient(to right, #f5f5f5, #e0e0e0);
+            border: 2px solid #bdbdbd;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 50px;
+            box-sizing: border-box;
+            backface-visibility: hidden;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .door-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: #fdfdfd;
+            border: 2px solid #ddd;
+            transform: rotateY(180deg) translateZ(2px);
+            backface-visibility: hidden;
+        }
+
+        .handle {
+            position: absolute;
+            width: 15px;
+            height: 120px;
+            background: #aaa;
+            right: 20px;
+            top: 180px;
+            border-radius: 5px;
+            box-shadow: -2px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .fridge-label {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .click-hint {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Fridge Interior */
+        .interior {
+            position: absolute;
+            width: 296px;
+            height: 496px;
+            transform: translateZ(-198px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+        }
+
+        .shelf {
+            width: 280px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.6);
+            border-bottom: 2px solid rgba(200, 200, 200, 0.8);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .shelf::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 180px;
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotateX(90deg);
+            transform-origin: top;
+        }
+
+        .food-container {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            font-size: 40px; /* Size of the food emojis */
+            transform: translateZ(50px);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Open State */
+        .open {
+            transform: rotateY(-110deg);
+        }
+
+        /* Titles for shelves */
+        .shelf-title {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: -25px;
+            font-size: 12px;
+            color: #555;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="scene">
+        <div class="fridge-box">
+            <div class="face back">
+                <div class="interior">
+                    <div class="shelf">
+                        <div class="shelf-title">Fruits</div>
+                        <div class="food-container">
+                            <span>🍓</span>
+                            <span>🥭</span>
+                            <span>🍇</span>
+                            <span>🍎</span>
+                        </div>
+                    </div>
+                    <div class="shelf">
+                        <div class="shelf-title">Veggies</div>
+                        <div class="food-container">
+                            <span>🥦</span>
+                            <span>🥕</span>
+                            <span>🥒</span>
+                            <span>🫑</span>
+                        </div>
+                    </div>
+                    <div class="shelf">
+                        <div class="shelf-title">Snacks & Treats</div>
+                        <div class="food-container">
+                            <span>🍫</span>
+                            <span>🍕</span>
+                            <span>🍩</span>
+                            <span>🧃</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="face left"></div>
+            <div class="face right"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
+        </div>
+
+        <div class="door" id="fridgeDoor">
+            <div class="door-front">
+                <div class="fridge-label">Twisha<br>Family</div>
+                <div class="click-hint">(Click to Open)</div>
+                <div class="handle"></div>
+            </div>
+            <div class="door-back"></div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript to handle the opening and closing of the fridge door
+        const door = document.getElementById('fridgeDoor');
+        
+        door.addEventListener('click', () => {
+            // Toggle the 'open' class on click
+            door.classList.toggle('open');
+            
+            // Optional: Change the click hint text based on state
+            const hint = document.querySelector('.click-hint');
+            if (door.classList.contains('open')) {
+                hint.textContent = "(Click to Close)";
+            } else {
+                hint.textContent = "(Click to Open)";
+            }
+        });
+    </script>
+</body>
+</html>
