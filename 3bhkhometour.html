@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Miniature 3BHK Home Tour</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB; /* Sky blue */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #room-label {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: background 0.3s;
+        }
+        #instructions {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 8px 20px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="room-label">Bird's Eye View</div>
+        <div id="instructions">🖱️ Click anywhere to flow to the next area</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // 1. Scene Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky background
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffdfbb, 0.8); // Warm sunlight
+        dirLight.position.set(20, 30, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -25;
+        dirLight.shadow.camera.right = 25;
+        dirLight.shadow.camera.top = 25;
+        dirLight.shadow.camera.bottom = -25;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // 3. House Building Functions
+        const materials = {
+            grass: new THREE.MeshStandardMaterial({ color: 0x55aa55 }),
+            floor: new THREE.MeshStandardMaterial({ color: 0xdddddd }),
+            wood: new THREE.MeshStandardMaterial({ color: 0x8b5a2b }),
+            wall: new THREE.MeshStandardMaterial({ color: 0xf5f5dc, transparent: true, opacity: 0.9 }),
+            water: new THREE.MeshStandardMaterial({ color: 0x44aaff }),
+            bed: new THREE.MeshStandardMaterial({ color: 0x3498db }),
+            shrine: new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.5, roughness: 0.2 }),
+            darkWood: new THREE.MeshStandardMaterial({ color: 0x3e2723 }),
+            glass: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3 })
+        };
+
+        function addBox(w, h, d, mat, x, y, z, castShadow = true) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y + h / 2, z);
+            mesh.castShadow = castShadow;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            return mesh;
+        }
+
+        // --- Build Miniature World --- //
+
+        // Garden / Base Ground
+        addBox(60, 0.5, 60, materials.grass, 0, -0.5, 0, false);
+        
+        // Front Gates & Path
+        addBox(1, 3, 1, materials.darkWood, -3, 0, 20); // Left Pillar
+        addBox(1, 3, 1, materials.darkWood, 3, 0, 20);  // Right Pillar
+        addBox(6, 0.1, 10, materials.floor, 0, 0, 15);  // Pathway
+
+        // House Foundation (Floorplan)
+        addBox(30, 0.2, 24, materials.floor, 0, 0, -2);
+
+        // Outline Walls (Low height to see inside easily)
+        const wallH = 1.5;
+        addBox(30, wallH, 0.5, materials.wall, 0, 0, -14); // Back
+        addBox(30, wallH, 0.5, materials.wall, 0, 0, 10);  // Front
+        addBox(0.5, wallH, 24, materials.wall, -15, 0, -2); // Left
+        addBox(0.5, wallH, 24, materials.wall, 15, 0, -2);  // Right
+
+        // Room Partitions & Furniture
+
+        // 1. Hall (Center-Front) -> x: -5 to 5, z: 0 to 10
+        addBox(10, 0.05, 10, new THREE.MeshStandardMaterial({ color: 0x90caf9 }), 0, 0.2, 5); // Carpet
+        addBox(4, 1, 1.5, new THREE.MeshStandardMaterial({ color: 0xe74c3c }), 0, 0.2, 8); // Sofa
+        addBox(3, 1.5, 0.2, new THREE.MeshStandardMaterial({ color: 0x111 }), 0, 0.5, 1); // TV
+
+        // 2. Dining Hall (Left-Front) -> x: -15 to -5, z: 0 to 10
+        addBox(10, 0.05, 10, materials.wood, -10, 0.2, 5);
+        addBox(3, 1, 4, materials.darkWood, -10, 0.2, 5); // Dining Table
+        addBox(0.8, 1.2, 0.8, materials.wood, -8, 0.2, 4); // Chair
+        addBox(0.8, 1.2, 0.8, materials.wood, -8, 0.2, 6); // Chair
+        addBox(0.8, 1.2, 0.8, materials.wood, -12, 0.2, 4); // Chair
+        addBox(0.8, 1.2, 0.8, materials.wood, -12, 0.2, 6); // Chair
+
+        // 3. Kitchen (Left-Mid) -> x: -15 to -5, z: -5 to 0
+        addBox(10, 0.05, 5, new THREE.MeshStandardMaterial({ color: 0xbdc3c7 }), -10, 0.2, -2.5);
+        addBox(4, 1.2, 1.5, new THREE.MeshStandardMaterial({ color: 0xecf0f1 }), -12, 0.2, -2.5); // Island
+        addBox(1.5, 2.5, 1.5, new THREE.MeshStandardMaterial({ color: 0x95a5a6 }), -14, 0.2, -4); // Fridge
+
+        // 4. Puja Ghar (Small room off Hall) -> x: 5 to 8, z: 2 to 6
+        addBox(3, 0.05, 4, new THREE.MeshStandardMaterial({ color: 0xffcc80 }), 6.5, 0.2, 4); // Rug
+        addBox(1.5, 1.5, 1, materials.shrine, 6.5, 0.2, 2.5); // Mandir
+        
+        // 5. Bedroom 1 (Master) -> x: -15 to -5, z: -14 to -5
+        addBox(10, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xce93d8 }), -10, 0.2, -9.5);
+        addBox(4, 0.8, 5, materials.bed, -11, 0.2, -11); // Bed
+
+        // 6. Bathroom 1 (Attached to Bed 1) -> x: -5 to 0, z: -14 to -9
+        addBox(5, 0.05, 5, new THREE.MeshStandardMaterial({ color: 0xe0f7fa }), -2.5, 0.2, -11.5);
+        addBox(2, 0.6, 4, materials.water, -4, 0.2, -11.5); // Tub
+        addBox(0.6, 1, 0.8, new THREE.MeshStandardMaterial({ color: 0xffffff }), -1, 0.2, -13); // Toilet
+
+        // 7. Bedroom 2 -> x: 0 to 7, z: -14 to -5
+        addBox(7, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xa5d6a7 }), 3.5, 0.2, -9.5);
+        addBox(3.5, 0.8, 4, new THREE.MeshStandardMaterial({ color: 0xf39c12 }), 4, 0.2, -11); // Bed
+
+        // 8. Bathroom 2 -> x: 7 to 11, z: -14 to -9
+        addBox(4, 0.05, 5, new THREE.MeshStandardMaterial({ color: 0xe0f7fa }), 9, 0.2, -11.5);
+        addBox(1.5, 0.6, 3, materials.water, 10, 0.2, -12); // Tub
+
+        // 9. Bedroom 3 -> x: 11 to 15, z: -14 to -5
+        addBox(4, 0.05, 9, new THREE.MeshStandardMaterial({ color: 0xffab91 }), 13, 0.2, -9.5);
+        addBox(2.5, 0.8, 4, new THREE.MeshStandardMaterial({ color: 0x9c27b0 }), 13.5, 0.2, -11); // Bed
+
+        // 10. Bathroom 3 (Common/Bed 3) -> x: 11 to 15, z: -5 to 0
+        addBox(4, 0.05, 5, new THREE.MeshStandardMaterial({ color: 0xe0f7fa }), 13, 0.2, -2.5);
+        addBox(0.6, 1, 0.8, new THREE.MeshStandardMaterial({ color: 0xffffff }), 14, 0.2, -4); // Toilet
+
+        // 11. Library (Right-Front) -> x: 8 to 15, z: 0 to 6
+        addBox(7, 0.05, 6, materials.wood, 11.5, 0.2, 3);
+        addBox(1, 2.5, 4, materials.darkWood, 14, 0.2, 3); // Bookshelf
+        addBox(1, 2.5, 4, materials.darkWood, 9, 0.2, 3); // Bookshelf
+        addBox(2, 0.8, 2, new THREE.MeshStandardMaterial({ color: 0x34495e }), 11.5, 0.2, 3); // Reading table
+
+        // 12. Balcony (Right side protruding) -> x: 15 to 18, z: 0 to 6
+        addBox(3, 0.2, 6, materials.floor, 16.5, 0, 3);
+        addBox(0.2, 1, 6, materials.glass, 17.9, 0.2, 3); // Glass Railing
+
+        // 13. Stairs (Back Right) -> x: 10 to 14, z: 6 to 10
+        for(let i=0; i<8; i++) {
+            addBox(3, 0.4, 0.6, materials.darkWood, 12, 0.2 + (i*0.4), 9.5 - (i*0.6));
+        }
+
+        // 14. Rooftop (Floating partial roof for miniature effect)
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, transparent: true, opacity: 0.5 });
+        addBox(16, 0.2, 26, roofMat, -7, 4, -1); // Covers left half so we can still see
+
+        // 4. Tour Locations Data (Waypoints)
+        const locations = [
+            { name: "Bird's Eye View", pos: [0, 30, 20], look: [0, 0, 0] },
+            { name: "Entrance Gates", pos: [0, 2, 28], look: [0, 1, 15] },
+            { name: "Front Garden", pos: [-10, 2, 18], look: [0, 1, 10] },
+            { name: "Hall (Living Room)", pos: [0, 2, 12], look: [0, 0.5, 5] },
+            { name: "Dining Hall", pos: [-6, 3, 10], look: [-10, 0.5, 5] },
+            { name: "Kitchen", pos: [-10, 3, 2], look: [-12, 1, -3] },
+            { name: "Puja Ghar", pos: [3, 2, 7], look: [6.5, 0.5, 2.5] },
+            { name: "Master Bedroom", pos: [-6, 3, -6], look: [-11, 0.5, -11] },
+            { name: "Attached Bathroom 1", pos: [-1, 3, -7], look: [-3, 0.5, -11.5] },
+            { name: "Bedroom 2", pos: [4, 3, -5], look: [4, 0.5, -11] },
+            { name: "Bathroom 2", pos: [7, 3, -8], look: [10, 0.5, -12] },
+            { name: "Bedroom 3", pos: [10, 3, -5], look: [13.5, 0.5, -11] },
+            { name: "Bathroom 3", pos: [11, 3, 1], look: [13, 0.5, -3] },
+            { name: "Library", pos: [8, 2, 6], look: [12, 1, 3] },
+            { name: "Balcony", pos: [14, 2, 8], look: [18, 1, 3] },
+            { name: "Staircase", pos: [12, 3, 12], look: [12, 4, 6] },
+            { name: "Rooftop View", pos: [0, 7, 5], look: [-5, 3, -5] }
+        ];
+
+        let currentIndex = 0;
+        
+        // Vectors for smooth interpolation
+        let targetPos = new THREE.Vector3(...locations[0].pos);
+        let targetLook = new THREE.Vector3(...locations[0].look);
+        let currentLook = new THREE.Vector3(...locations[0].look);
+
+        // Initialize Camera
+        camera.position.copy(targetPos);
+        camera.lookAt(currentLook);
+
+        // 5. Interactions
+        const label = document.getElementById('room-label');
+        
+        window.addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % locations.length;
+            const loc = locations[currentIndex];
+            
+            targetPos.set(...loc.pos);
+            targetLook.set(...loc.look);
+            
+            // UI Update
+            label.innerText = loc.name;
+            
+            // Randomize label color slightly for visual feedback
+            const hue = Math.floor(Math.random() * 360);
+            label.style.background = `hsla(${hue}, 60%, 20%, 0.9)`;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 6. Animation Loop (The "Flow" mechanic)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smoothly interpolate (lerp) camera position and look target
+            camera.position.lerp(targetPos, 0.025);
+            currentLook.lerp(targetLook, 0.025);
+            camera.lookAt(currentLook);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
