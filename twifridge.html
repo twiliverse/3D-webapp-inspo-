@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twisha Family Custom Fridge V2</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: none; /* Let clicks pass to 3D canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 40px 0;
+            box-sizing: border-box;
+        }
+        .header {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 40px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #d4af37;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #e0e0e0;
+        }
+        #toggle-btn {
+            pointer-events: auto; /* Make button clickable */
+            background: linear-gradient(45deg, #d4af37, #f3e5ab);
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a1a2e;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #toggle-btn:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 15px 25px rgba(212, 175, 55, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="header">
+            <h1>Twisha Family</h1>
+            <p>Bespoke Designer Edition</p>
+        </div>
+        <button id="toggle-btn">✨ Open Fridge ✨</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- 1. Basic Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 3, 0);
+
+        // --- 2. Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfff0dd, 0.8);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Interior light (turns up when doors open)
+        const interiorLight = new THREE.PointLight(0xffffff, 0, 8);
+        interiorLight.position.set(0, 4, 0.5);
+        scene.add(interiorLight);
+
+        // --- 3. Materials ---
+        const fridgeMat = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.2 }); // Cashmere Cream
+        const intMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.3 });
+
+        // --- 4. Building the Fridge Body ---
+        const fridgeGroup = new THREE.Group();
+        scene.add(fridgeGroup);
+
+        const fW = 3.6, fH = 6, fD = 2.4;
+        const thick = 0.15;
+
+        function addBox(w, h, d, mat, x, y, z) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            fridgeGroup.add(mesh);
+            return mesh;
+        }
+
+        // Outer Shell
+        addBox(fW, fH, thick, fridgeMat, 0, fH/2, -fD/2); // Back
+        addBox(thick, fH, fD, fridgeMat, -fW/2, fH/2, 0); // Left
+        addBox(thick, fH, fD, fridgeMat, fW/2, fH/2, 0);  // Right
+        addBox(fW, thick, fD, fridgeMat, 0, fH, 0);       // Top
+        addBox(fW, thick, fD, fridgeMat, 0, 0, 0);        // Bottom
+        addBox(fW, thick, fD-0.2, intMat, 0, 2, 0);       // Middle Divider
+
+        // Glass Shelves
+        addBox(fW-0.4, 0.05, fD-0.6, glassMat, 0, 3.2, 0);
+        addBox(fW-0.4, 0.05, fD-0.6, glassMat, 0, 4.4, 0);
+
+        // Bottom Freezer Drawer (Fake/Static for aesthetics)
+        const freezerFront = addBox(fW-0.1, 1.8, 0.1, fridgeMat, 0, 1, fD/2);
+        addBox(1.5, 0.05, 0.1, goldMat, 0, 1.6, fD/2 + 0.1); // Handle
+
+        // Floor Pedestal
+        const floor = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 0.2, 32), new THREE.MeshStandardMaterial({color: 0x222222}));
+        floor.position.y = -0.1;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // --- 5. French Doors (Dynamic) ---
+        const doorW = fW / 2 - 0.05;
+        const doorH = fH - 2 - 0.1;
+        const doorY = 2 + doorH / 2 + 0.05;
+
+        // Left Door
+        const leftPivot = new THREE.Group();
+        leftPivot.position.set(-fW/2, doorY, fD/2);
+        scene.add(leftPivot);
+        
+        const leftDoor = new THREE.Mesh(
