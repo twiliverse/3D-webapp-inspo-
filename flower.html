@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Dynamic Flower</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #0d1a10; /* Dark green/black background */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-size: 1.2rem;
+            pointer-events: none;
+            user-select: none;
+            letter-spacing: 1px;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">Click anywhere to scatter the petals!</div>
+    
+    <!-- Import Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // 1. Scene Setup
+        const scene = new THREE.Scene();
+        // Add a soft fog to blend the scattered petals into the background
+        scene.fog = new THREE.FogExp2(0x0d1a10, 0.04); 
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 3, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(5, 10, 5);
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0xffaa00, 1, 20);
+        scene.add(pointLight); // Illuminate the center
+
+        // 3. Create the Flower Group
+        const flowerGroup = new THREE.Group();
+        scene.add(flowerGroup);
+
+        // --- Create Flower Center ---
+        const centerGeo = new THREE.SphereGeometry(0.8, 32, 32);
+        const centerMat = new THREE.MeshPhongMaterial({ 
+            color: 0xffcc00, 
+            emissive: 0x442200,
+            shininess: 30 
+        });
+        const flowerCenter = new THREE.Mesh(centerGeo, centerMat);
+        flowerGroup.add(flowerCenter);
+
+        // --- Create Petals ---
+        const petals = [];
+        
+        // Base geometry for a petal (a sphere squished to look flat and long)
+        const petalGeo = new THREE.SphereGeometry(0.5, 16, 16);
+        petalGeo.scale(1, 2.5, 0.1); 
+        
+        // Setup rings of petals to make it look full
+        const rings = [
+            { count: 8, radius: 0.9, tilt: Math.PI / 6, color: 0xff4d79 },
+            { count: 14, radius: 1.4, tilt: Math.PI / 4, color: 0xff3366 },
+            { count: 20, radius: 1.9, tilt: Math.PI / 3, color: 0xff1a53 }
+        ];
+
+        rings.forEach((ring) => {
+            for (let i = 0; i < ring.count; i++) {
+                const petalMat = new THREE.MeshPhongMaterial({
+                    color: ring.color,
+                    side: THREE.DoubleSide,
+                    shininess: 80
+                });
+                
+                const petal = new THREE.Mesh(petalGeo, petalMat);
+                
+                // Calculate ASSEMBLED position and rotation
+                const angle = (i / ring.count) * Math.PI * 2;
+                const x = Math.cos(angle) * ring.radius;
+                const z = Math.sin(angle) * ring.radius;
+                const y = -ring.radius * 0.2; // Slight downward curve
+                
+                const assembledPos = new THREE.Vector3(x, y, z);
+                
+                // Rotate petal to radiate outward from center
+                petal.position.copy(assembledPos);
+                petal.rotation.y = -angle + Math.PI / 2;
+                petal.rotation.x = ring.tilt;
+                
+                const assembledQuat = new THREE.Quaternion().copy(petal.quaternion);
+
+                // Calculate SCATTERED position and rotation (Shower effect)
+                const dropRadius = 4 + Math.random() * 8; // Spread out wide
+                const dropAngle = Math.random() * Math.PI * 2;
+                const scatterX = Math.cos(dropAngle) * dropRadius;
+                const scatterZ = Math.sin(dropAngle) * dropRadius;
+                const scatterY = -6 - Math.random() * 8; // Fall downwards
+                
+                const scatteredPos = new THREE.Vector3(scatterX, scatterY, scatterZ);
+                
+                // Random messy rotation for falling petals
+                const scatteredEuler = new THREE.Euler(
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2
+                );
+                const scatteredQuat = new THREE.Quaternion().setFromEuler(scatteredEuler);
+
+                // Save states in userData
+                petal.userData = {
+                    assembledPos: assembledPos,
+                    assembledQuat: assembledQuat,
+                    scatteredPos: scatteredPos,
+                    scatteredQuat: scatteredQuat,
+                    speed: 0.02 + Math.random() * 0.03 // Random speed for organic feel
+                };
+
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+        });
+
+        // 4. State Management and Interaction
+        let isAssembled = true;
+
+        window.addEventListener('click', () => {
+            isAssembled = !isAssembled;
+            const text = document.getElementById('instructions');
+            if (isAssembled) {
+                text.innerText = "Click anywhere to scatter the petals!";
+            } else {
+                text.innerText = "Click anywhere to reform the flower!";
+            }
+        });
+
+        // Handle Window Resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 5. Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Slowly rotate the entire flower grouping for a beautiful dynamic effect
+            flowerGroup.rotation.y += 0.005;
+            flowerGroup.rotation.z = Math.sin(Date.now() * 0.001) * 0.1; // Slight breathing effect
+
+            // Animate each petal
+            petals.forEach(petal => {
+                const targetPos = isAssembled ? petal.userData.assembledPos : petal.userData.scatteredPos;
+                const targetQuat = isAssembled ? petal.userData.assembledQuat : petal.userData.scatteredQuat;
+                
+                // Interpolate position (Lerp)
+                petal.position.lerp(targetPos, petal.userData.speed);
+                
+                // Interpolate rotation (Slerp for quaternions for smooth 3D rotation)
+                petal.quaternion.slerp(targetQuat, petal.userData.speed);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
